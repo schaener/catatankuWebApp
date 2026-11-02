@@ -1,0 +1,23 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "SF Pro Display", "Segoe UI", Inter, sans-serif; color: #0b1f1d; -webkit-font-smoothing: antialiased; }
+.canvas { position: relative; overflow: hidden; background: radial-gradient(circle at 85% 15%, #5eead4 0, transparent 40%), radial-gradient(circle at 10% 95%, #99f6e4 0, transparent 45%), linear-gradient(160deg, #f0fdfa 0%, #ccfbf1 100%); }
+.dark { color: #fff; background: radial-gradient(circle at 90% 10%, #14b8a6 0, transparent 45%), radial-gradient(circle at 0% 100%, #115e59 0, transparent 50%), linear-gradient(160deg, #0f766e 0%, #042f2e 100%); }
+.logo { display: inline-flex; align-items: center; gap: 14px; font-weight: 800; font-size: 30px; }
+.logo b { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: #0f766e; color: #fff; font-size: 24px; }
+.dark .logo b { background: #fff; color: #0f766e; }
+h1 { font-size: 64px; line-height: 1.05; letter-spacing: -1.5px; font-weight: 850; }
+h1 em { font-style: normal; color: #0f766e; }
+.dark h1 em { color: #5eead4; }
+.lead { font-size: 26px; line-height: 1.4; color: #134e4a; }
+.dark .lead { color: #ccfbf1; }
+.phone { position: absolute; width: 300px; border-radius: 46px; background: #0b1f1d; padding: 12px; box-shadow: 0 40px 80px -20px rgba(4,47,46,.55), 0 0 0 2px rgba(255,255,255,.08) inset; }
+.phone .screen { border-radius: 35px; overflow: hidden; background: #f3f5f7; padding-top: 44px; }
+.phone img { display: block; width: 100%; }
+.phone::before { content: ""; position: absolute; top: 22px; left: 50%; transform: translateX(-50%); width: 90px; height: 24px; border-radius: 12px; background: #0b1f1d; z-index: 2; }
+.chips { display: flex; flex-wrap: wrap; gap: 12px; }
+.chip { background: #fff; border-radius: 999px; padding: 12px 20px; font-size: 22px; font-weight: 650; box-shadow: 0 6px 18px -8px rgba(15,118,110,.4); }
+.dark .chip { background: rgba(255,255,255,.12); color: #fff; box-shadow: none; border: 1px solid rgba(255,255,255,.2); }
+.cta { display: inline-flex; align-items: center; gap: 12px; background: #0f766e; color: #fff; font-weight: 800; font-size: 28px; padding: 18px 30px; border-radius: 18px; box-shadow: 0 14px 30px -10px rgba(15,118,110,.7); }
+.dark .cta { background: #fff; color: #0f766e; }
+.bubble { position: absolute; background: #fff; color: #0b1f1d; border-radius: 22px; padding: 16px 20px; font-size: 21px; font-weight: 600; box-shadow: 0 20px 40px -14px rgba(4,47,46,.45); display: flex; gap: 12px; align-items: center; }
+.bubble small { display: block; font-size: 16px; font-weight: 500; color: #5b6b6a; }
