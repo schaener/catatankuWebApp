@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../features/auth/authThunks.js';
 import { selectUser } from '../features/auth/authSlice.js';
 import { Avatar, Spinner, Toasts } from './ui.jsx';
+import { useNotificationAlerts, useNotifications } from '../features/notifications/useNotifications.js';
 
 const NAV = [
   { to: '/', icon: '📊', label: 'Dashboard', end: true },
@@ -13,11 +14,17 @@ const NAV = [
   { to: '/split', icon: '🧾', label: 'Split Bill' },
   { to: '/chat', icon: '💬', label: 'Chat' },
   { to: '/feed', icon: '🌐', label: 'Feed' },
+  { to: '/notifications', icon: '🔔', label: 'Notifikasi' },
 ];
+
+// Unread badges per menu item
+const BADGE = { '/chat': 'chat', '/notifications': 'total' };
 
 export default function Layout() {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  const { counts } = useNotifications();
+  useNotificationAlerts();
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -30,6 +37,7 @@ export default function Layout() {
             <NavLink key={n.to} to={n.to} end={n.end} className="nav-link">
               <span className="nav-icon">{n.icon}</span>
               <span className="nav-label">{n.label}</span>
+              {counts[BADGE[n.to]] > 0 && <span className="badge">{counts[BADGE[n.to]] > 99 ? '99+' : counts[BADGE[n.to]]}</span>}
             </NavLink>
           ))}
         </nav>

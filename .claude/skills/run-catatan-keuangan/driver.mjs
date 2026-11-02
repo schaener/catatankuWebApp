@@ -4,7 +4,7 @@
 //
 // Logs in through the demo "Masuk dengan Google" button, then clicks each
 // sidebar entry given (Dashboard, Transaksi, Cari, Laporan, "Split Bill",
-// Chat, Feed - default: all) and screenshots it. Exits 1 on page/console
+// Chat, Feed, Notifikasi - default: all) and screenshots it. Exits 1 on page/console
 // errors. Env: APP_URL (default http://localhost:5173/), SHOTS_DIR,
 // CHROME_PATH (default: system Google Chrome via channel 'chrome').
 import { mkdirSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { chromium } from 'playwright-core';
 
 const URL = process.env.APP_URL ?? 'http://localhost:5173/';
 const SHOTS = process.env.SHOTS_DIR ?? '/tmp/catatan-shots';
-const ALL = ['Dashboard', 'Transaksi', 'Cari', 'Laporan', 'Split Bill', 'Chat', 'Feed'];
+const ALL = ['Dashboard', 'Transaksi', 'Cari', 'Laporan', 'Split Bill', 'Chat', 'Feed', 'Notifikasi'];
 const pages = process.argv.slice(2).length ? process.argv.slice(2) : ALL;
 
 mkdirSync(SHOTS, { recursive: true });

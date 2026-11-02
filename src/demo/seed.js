@@ -204,6 +204,7 @@ export function seedDatabase(store) {
   const posts = [
     { id: 'p1', author: sari, text: 'Akhirnya dana darurat tembus 6x pengeluaran bulanan! Konsisten nabung 20% tiap gajian ternyata bisa 💪', mood: '🎯 Target', amount: 30000000, category: 'Investasi', min: 45, likes: [rina.uid, andi.uid], comments: [[rina, 'Keren banget Sar! Inspiratif 🔥', 30]] },
     { id: 'p2', author: andi, text: 'Tips: matikan auto-renew langganan yang jarang dipakai. Aku baru sadar bayar 3 streaming sekaligus 🙈', mood: '💡 Tips', amount: 186000, category: 'Hiburan', min: 60 * 5, likes: [sari.uid], comments: [] },
+    { id: 'p4', author: me, text: 'Challenge no-jajan seminggu: hari ke-5 dan udah hemat Rp 250.000! Siapa mau ikutan? 🙌', mood: '🎉 Hemat', amount: 250000, category: 'Makanan & Minuman', min: 90, likes: [rina.uid, sari.uid], comments: [[sari, 'Ikut dong! Mulai Senin ya 😆', 35]] },
     { id: 'p3', author: rina, text: 'Bulan ini kopi kekinian habis 600rb sendiri. Bulan depan coba bawa tumbler & seduh sendiri ☕', mood: '😅 Boros', amount: 600000, category: 'Makanan & Minuman', min: 60 * 26, likes: [me.uid, sari.uid, andi.uid], comments: [[andi, 'Sama banget 😂', 60 * 25], [me, 'Ayo challenge bareng!', 60 * 24]] },
   ];
   for (const p of posts) {
@@ -225,12 +226,64 @@ export function seedDatabase(store) {
       store.set(`posts/${p.id}/comments/c${i}`, { text, authorId: u.uid, authorName: u.displayName, authorPhoto: null, createdAt: ago(min) }),
     );
   }
+
+  // Notifications for the demo user
+  const notif = (id, u, data, min, read = false) =>
+    store.set(`users/${me.uid}/notifications/${id}`, { actorId: u.uid, actorName: u.displayName, actorPhoto: null, read, updatedAt: ago(min), ...data });
+  const p4 = posts.find((p) => p.id === 'p4');
+  notif(`like_p4_${rina.uid}`, rina, { type: 'like', postId: 'p4', text: p4.text.slice(0, 80) }, 80, true);
+  notif(`like_p4_${sari.uid}`, sari, { type: 'like', postId: 'p4', text: p4.text.slice(0, 80) }, 40);
+  notif('comment_c0', sari, { type: 'comment', postId: 'p4', text: p4.comments[0][1] }, 35);
+  notif(`chat_${dm}`, rina, { type: 'message', chatId: dm, chatName: null, text: 'Udah aku transfer ya buat yang sate kemarin 🙏', count: 1 }, 60 * 20);
 }
 
 const REPLIES = ['Oke siap 👍', 'Wah mantap, nanti aku cek ya', 'Hahaha bener juga', 'Noted! Makasih infonya', 'Boleh, kabarin aja 🙌'];
 
-/** Friends answer your chat messages after a moment so chat feels alive in the demo. */
+const COMMENTS = ['Keren! 🔥', 'Setuju banget 👍', 'Wah inspiratif, mau coba juga', 'Semangat terus! 💪'];
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function notifyDemoUser(db, id, friend, data) {
+  db.store.set(`users/${DEMO_USER.uid}/notifications/${id}`, {
+    actorId: friend.uid,
+    actorName: friend.displayName,
+    actorPhoto: null,
+    read: false,
+    updatedAt: Date.now(),
+    ...data,
+  });
+}
+
+/**
+ * Friends react so chat & notifications feel alive in the demo:
+ * they answer your chat messages, and like + comment on your new posts.
+ */
+const reactedPosts = new Set();
 export function scheduleAutoReply(path, data, db) {
+  const post = path.match(/^posts\/([^/]+)$/);
+  if (post && data.authorId === DEMO_USER.uid && !reactedPosts.has(post[1]) && !data.likes?.length && !data.commentCount) {
+    const postId = post[1];
+    reactedPosts.add(postId);
+    const [liker, commenter] = [...FRIENDS].sort(() => Math.random() - 0.5);
+    setTimeout(() => {
+      const p = db.store.get(path);
+      if (!p) return;
+      db.store.set(path, { ...p, likes: [...p.likes, liker.uid], likeCount: p.likeCount + 1 });
+      notifyDemoUser(db, `like_${postId}_${liker.uid}`, liker, { type: 'like', postId, text: p.text.slice(0, 80) });
+      db.changed();
+    }, 3000);
+    setTimeout(() => {
+      const p = db.store.get(path);
+      if (!p) return;
+      const id = db.newId();
+      const text = pick(COMMENTS);
+      db.store.set(`${path}/comments/${id}`, { text, authorId: commenter.uid, authorName: commenter.displayName, authorPhoto: null, createdAt: Date.now() });
+      db.store.set(path, { ...p, commentCount: p.commentCount + 1 });
+      notifyDemoUser(db, `comment_${id}`, commenter, { type: 'comment', postId, text });
+      db.changed();
+    }, 6000);
+    return;
+  }
+
   const m = path.match(/^chats\/([^/]+)\/messages\/[^/]+$/);
   if (!m || data.senderId !== DEMO_USER.uid) return;
   const chatPath = `chats/${m[1]}`;
@@ -238,11 +291,19 @@ export function scheduleAutoReply(path, data, db) {
     const chat = db.store.get(chatPath);
     if (!chat) return;
     const others = chat.members.filter((u) => u !== DEMO_USER.uid);
-    const uid = others[Math.floor(Math.random() * others.length)];
+    const uid = pick(others);
     const name = chat.memberInfo?.[uid]?.displayName || 'Teman';
-    const text = REPLIES[Math.floor(Math.random() * REPLIES.length)];
+    const text = pick(REPLIES);
     db.store.set(`${chatPath}/messages/${db.newId()}`, { text, senderId: uid, senderName: name, createdAt: Date.now() });
     db.store.set(chatPath, { ...chat, lastMessage: { text, senderId: uid, senderName: name }, updatedAt: Date.now() });
+    const prev = db.store.get(`users/${DEMO_USER.uid}/notifications/chat_${m[1]}`);
+    notifyDemoUser(db, `chat_${m[1]}`, { uid, displayName: name }, {
+      type: 'message',
+      chatId: m[1],
+      chatName: chat.isGroup ? chat.name : null,
+      text,
+      count: (prev && !prev.read ? prev.count || 0 : 0) + 1,
+    });
     db.changed();
   }, 1500);
 }

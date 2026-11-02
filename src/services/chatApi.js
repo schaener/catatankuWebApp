@@ -15,6 +15,7 @@ import { db } from '../firebase.js';
 import { api, currentUser, run } from './api.js';
 import { serializeDoc } from '../utils/serialize.js';
 import { streamInto } from './stream.js';
+import { notifyMessage } from './notificationsApi.js';
 
 const chatsQuery = (uid) => query(collection(db, 'chats'), where('members', 'array-contains', uid));
 const messagesQuery = (chatId) =>
@@ -62,7 +63,7 @@ export const chatApi = api.injectEndpoints({
         }),
     }),
     sendMessage: builder.mutation({
-      queryFn: ({ chatId, text }, { getState }) =>
+      queryFn: ({ chatId, text, chat }, { getState }) =>
         run(async () => {
           const me = currentUser(getState);
           const batch = writeBatch(db);
@@ -78,6 +79,7 @@ export const chatApi = api.injectEndpoints({
             updatedAt: serverTimestamp(),
           });
           await batch.commit();
+          if (chat) await notifyMessage(me, chat, text.trim());
           return { id: msgRef.id };
         }),
     }),

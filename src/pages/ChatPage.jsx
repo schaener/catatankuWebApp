@@ -62,7 +62,7 @@ function ChatRoom({ chat, me }) {
     if (!text.trim()) return;
     const value = text;
     setText('');
-    const res = await send({ chatId: chat.id, text: value });
+    const res = await send({ chatId: chat.id, text: value, chat });
     if (res.error) setText(value);
   };
 

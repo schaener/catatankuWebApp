@@ -95,7 +95,8 @@ function Composer() {
   );
 }
 
-function Comments({ postId, me }) {
+function Comments({ post, me }) {
+  const postId = post.id;
   const { data = [], isLoading } = useGetCommentsQuery(postId);
   const [add, { isLoading: sending }] = useAddCommentMutation();
   const [remove] = useDeleteCommentMutation();
@@ -103,7 +104,7 @@ function Comments({ postId, me }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    const res = await add({ postId, text });
+    const res = await add({ postId, text, post });
     if (!res.error) setText('');
   };
   return (
@@ -169,14 +170,14 @@ function Post({ post, me }) {
       )}
       {post.imageUrl && <img className="post-img" src={post.imageUrl} alt="" loading="lazy" />}
       <footer className="post-actions">
-        <button className={`link-btn ${liked ? 'liked' : ''}`} onClick={() => toggleLike({ postId: post.id, liked })}>
+        <button className={`link-btn ${liked ? 'liked' : ''}`} onClick={() => toggleLike({ postId: post.id, liked, post })}>
           {liked ? '❤️' : '🤍'} {post.likeCount || 0}
         </button>
         <button className="link-btn" onClick={() => setShowComments((s) => !s)}>
           💬 {post.commentCount || 0}
         </button>
       </footer>
-      {showComments && <Comments postId={post.id} me={me} />}
+      {showComments && <Comments post={post} me={me} />}
     </article>
   );
 }

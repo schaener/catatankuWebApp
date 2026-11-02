@@ -18,6 +18,7 @@ import { db } from '../firebase.js';
 import { api, currentUser, run } from './api.js';
 import { serializeDoc } from '../utils/serialize.js';
 import { streamInto } from './stream.js';
+import { notifyComment, notifyLike } from './notificationsApi.js';
 
 const feedQuery = (max) => query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(max));
 const commentsQuery = (postId) => query(collection(db, 'posts', postId, 'comments'), orderBy('createdAt'), limit(200));
@@ -66,13 +67,14 @@ export const postsApi = api.injectEndpoints({
         }),
     }),
     toggleLike: builder.mutation({
-      queryFn: ({ postId, liked }, { getState }) =>
+      queryFn: ({ postId, liked, post }, { getState }) =>
         run(async () => {
-          const { uid } = currentUser(getState);
+          const me = currentUser(getState);
           await updateDoc(doc(db, 'posts', postId), {
-            likes: liked ? arrayRemove(uid) : arrayUnion(uid),
+            likes: liked ? arrayRemove(me.uid) : arrayUnion(me.uid),
             likeCount: increment(liked ? -1 : 1),
           });
+          if (post) await notifyLike(me, post, !liked);
           return { postId };
         }),
       // Optimistic update across every cached feed page
@@ -98,7 +100,7 @@ export const postsApi = api.injectEndpoints({
       },
     }),
     addComment: builder.mutation({
-      queryFn: ({ postId, text }, { getState }) =>
+      queryFn: ({ postId, text, post }, { getState }) =>
         run(async () => {
           const me = currentUser(getState);
           const batch = writeBatch(db);
@@ -112,6 +114,7 @@ export const postsApi = api.injectEndpoints({
           });
           batch.update(doc(db, 'posts', postId), { commentCount: increment(1) });
           await batch.commit();
+          if (post) await notifyComment(me, post, ref.id, text.trim());
           return { id: ref.id };
         }),
     }),

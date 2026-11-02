@@ -1,6 +1,6 @@
 ---
 name: run-catatan-keuangan
-description: Build, run, and drive the Catatan Keuangan finance web app (React + Vite + Firebase). Use when asked to run/start the app, launch the dev server, take a screenshot of a page (Dashboard, Transaksi, Laporan, Split Bill, Chat, Feed), run its tests, or check that a UI change works.
+description: Build, run, and drive the Catatan Keuangan finance web app (React + Vite + Firebase). Use when asked to run/start the app, launch the dev server, take a screenshot of a page (Dashboard, Transaksi, Laporan, Split Bill, Chat, Feed, Notifikasi), run its tests, or check that a UI change works.
 ---
 
 Start the Vite dev server in **demo mode** (Firebase swapped for an in-browser fake with seed data, no credentials needed), then drive it with `.claude/skills/run-catatan-keuangan/driver.mjs` - a Playwright script on the system Google Chrome that logs in, clicks through sidebar pages and screenshots each one.
@@ -42,7 +42,7 @@ Output: one `shot /tmp/catatan-shots/<page>.png` line per page, then `ok`. Exits
 
 | arg / env | meaning |
 |---|---|
-| page args | sidebar labels: `Dashboard` `Transaksi` `Cari` `Laporan` `"Split Bill"` `Chat` `Feed` (default: all) |
+| page args | sidebar labels: `Dashboard` `Transaksi` `Cari` `Laporan` `"Split Bill"` `Chat` `Feed` `Notifikasi` (default: all) |
 | `APP_URL` | default `http://localhost:5173/` |
 | `SHOTS_DIR` | default `/tmp/catatan-shots` |
 | `CHROME_PATH` | Chrome binary if not the standard macOS install |

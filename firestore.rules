@@ -20,6 +20,33 @@ service cloud.firestore {
       match /{document=**} {
         allow read, write: if isUser(uid);
       }
+
+      // Notifications are written by whoever triggers them (like, comment, chat message).
+      // The owner reads/marks them via the rule above; others may only write as themselves,
+      // unread, and only for a post the owner wrote or a chat both of them are in.
+      match /notifications/{nid} {
+        function post(id) {
+          return get(/databases/$(database)/documents/posts/$(id)).data;
+        }
+        function chatMembers(id) {
+          return get(/databases/$(database)/documents/chats/$(id)).data.members;
+        }
+        function validNotification() {
+          let n = request.resource.data;
+          return signedIn() && uid != request.auth.uid
+            && n.actorId == request.auth.uid
+            && n.read == false
+            && n.text is string && n.text.size() <= 200
+            && (
+              (n.type == 'like' && nid == 'like_' + n.postId + '_' + request.auth.uid && post(n.postId).authorId == uid) ||
+              (n.type == 'comment' && nid.matches('comment_.+') && post(n.postId).authorId == uid) ||
+              (n.type == 'message' && nid == 'chat_' + n.chatId
+                && request.auth.uid in chatMembers(n.chatId) && uid in chatMembers(n.chatId))
+            );
+        }
+        allow create, update: if validNotification();
+        allow delete: if signedIn() && resource.data.actorId == request.auth.uid;
+      }
     }
 
     // ---- Split bills: visible to every linked member, managed by owner.

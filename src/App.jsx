@@ -20,6 +20,7 @@ const SplitBillsPage = lazy(() => import('./pages/SplitBillsPage.jsx'));
 const SplitBillDetailPage = lazy(() => import('./pages/SplitBillDetailPage.jsx'));
 const ChatPage = lazy(() => import('./pages/ChatPage.jsx'));
 const FeedPage = lazy(() => import('./pages/FeedPage.jsx'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
 
 // The demo runs inside an embedded preview where URL paths can't change.
 const Router = IS_DEMO ? MemoryRouter : BrowserRouter;
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="chat" element={<ChatPage />} />
               <Route path="chat/:chatId" element={<ChatPage />} />
               <Route path="feed" element={<FeedPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
