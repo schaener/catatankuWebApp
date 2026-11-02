@@ -3,6 +3,8 @@
 Personal finance web app built with **React 19 + Redux Toolkit (RTK Query)**, **Firebase Firestore** as the
 database and **Google Sign-In** via Firebase Auth.
 
+Live: https://catatanku-fe332.web.app
+
 ## Features
 
 | Feature | Where | Notes |
@@ -13,8 +15,9 @@ database and **Google Sign-In** via Firebase Auth.
 | Search by date range | `/search` | Date range + presets, keyword, type, category, min/max amount, CSV export |
 | Reports | `/reports` | Create a frozen snapshot report for any date range: totals, per category/place/method/month, transaction list, print/PDF, CSV |
 | Split bill | `/split` | Equal, per‑item, or custom split with tax & service; registered users or guests; mark paid (optimistic); copy summary for WhatsApp; open group chat; optionally log your share as an expense |
-| Chat | `/chat` | Real-time direct & group chats between users |
+| Chat | `/chat` | Real-time direct & group chats between users; unread badge in the sidebar |
 | Social feed | `/feed` | Post stories/tips with mood, amount, category, image URL; likes (optimistic), real-time comments, load more |
+| Notifications | `/notifications` | Real-time alerts for likes and comments on your posts and new chat messages (grouped per chat with a count); unread badges, toast while the app is open, browser notification when the tab is hidden, mark read / mark all read. The chat you have open is marked read automatically |
 
 ## Caching system (3 layers)
 
@@ -36,10 +39,12 @@ src/
   app/            store + cache persistence
   features/auth   auth slice & thunks (Google login, listener)
   features/ui     toasts, shared UI state
-  services/       RTK Query endpoints per domain (transactions, reports, splitBills, chat, posts, users)
+  features/notifications  unread counts, toast/browser alerts (useNotifications)
+  services/       RTK Query endpoints per domain (transactions, reports, splitBills, chat, posts, users, notifications)
   components/     layout, forms, lists, modal, pickers
   pages/          route pages (lazy-loaded)
   utils/          finance calculations (tested), dates, formatting
+  demo/           in-browser Firestore/Auth fake + seed data (demo mode only)
 firestore.rules   security rules
 ```
 
@@ -49,6 +54,8 @@ firestore.rules   security rules
 users/{uid}                       public profile (directory for chat/split bill)
 users/{uid}/transactions/{id}     type, amount, category, place, paymentMethod, note, date(ms)
 users/{uid}/reports/{id}          title, from, to, notes, summary, transactions[]
+users/{uid}/notifications/{id}    type (like|comment|message), actorId, actorName, text, postId|chatId,
+                                  count (messages), read, updatedAt
 splitBills/{id}                   ownerId, memberUids[], participants[], items[], total...
 chats/{id}                        members[], memberInfo, lastMessage, updatedAt
 chats/{id}/messages/{id}          text, senderId, createdAt
@@ -58,7 +65,26 @@ posts/{id}/comments/{id}          text, authorId, createdAt
 
 No composite indexes are required (multi-field sorting is done client-side).
 
+### Notifications
+
+Notifications are written by the client that triggers them (no Cloud Functions needed), best-effort after the
+like/comment/message itself succeeds:
+
+| Id | Written when |
+| --- | --- |
+| `like_{postId}_{actorUid}` | someone likes your post (deleted again on unlike) |
+| `comment_{commentId}` | someone comments on your post |
+| `chat_{chatId}` | someone sends a message in a chat you are in (one doc per chat, `count` increments) |
+
+`firestore.rules` lets other users create/update these only as themselves (`actorId == auth.uid`), unread, and
+only for a post you wrote or a chat you both belong to; the actor may delete their own like notification.
+Only the owner can read and mark them read. Alerts arrive while the app is open (including a background tab);
+true push when the app is closed would need Firebase Cloud Messaging + Cloud Functions (Blaze plan).
+
 ## Setup
+
+Requires **Node ≥ 20.19 or ≥ 22.12** (Vite 8). Node 21 fails with
+`ERR_INVALID_ARG_VALUE ... styleText`; e.g. `nvm install 22 && nvm use 22`.
 
 1. Create a Firebase project → add a **Web app**.
 2. **Authentication → Sign-in method → Google** → enable. Add your domain under *Authorized domains*
@@ -73,16 +99,30 @@ No composite indexes are required (multi-field sorting is done client-side).
    npm install
    npm run dev
    ```
-6. Deploy security rules (and optionally hosting):
+   On macOS, if Vite fails with `Cannot find native binding ... @rolldown/binding-darwin-arm64`, install the
+   missing optional dependency without touching the lockfile:
+   ```bash
+   npm install --no-save @rolldown/binding-darwin-arm64@$(node -p "require('./node_modules/rolldown/package.json').version")
+   ```
+6. Deploy security rules, indexes and hosting (`.firebaserc` pins the project `catatanku-fe332`; run
+   `firebase use --add` to deploy to your own project instead):
    ```bash
    npm i -g firebase-tools && firebase login
-   firebase use --add
-   firebase deploy --only firestore:rules
-   npm run build && firebase deploy --only hosting
+   npm run build
+   firebase deploy --only firestore:rules,firestore:indexes,hosting
    ```
+
+## Demo mode
+
+`npm run dev:demo` runs the app with Firebase swapped for an in-browser fake (`src/demo/`) seeded with
+sample data, so no Firebase project or `.env.local` is needed. "Masuk dengan Google" signs in as a sample
+user; friends auto-reply in chat and react to your new posts, which also exercises notifications. Data is
+kept in `localStorage`. `npm run build:demo` produces a single self-contained file, `dist-demo/catatan-keuangan-demo.html`.
 
 ## Scripts
 
 - `npm run dev` – dev server
+- `npm run dev:demo` – dev server in demo mode (no Firebase needed)
 - `npm run build` – production build to `dist/`
+- `npm run build:demo` – self-contained demo build to `dist-demo/`
 - `npm test` – unit tests for finance logic (split bill math, summaries, filters)
