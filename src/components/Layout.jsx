@@ -1,14 +1,18 @@
 import { Suspense } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../features/auth/authThunks.js';
 import { selectUser } from '../features/auth/authSlice.js';
 import { Avatar, Spinner, Toasts } from './ui.jsx';
 import { useNotificationAlerts, useNotifications } from '../features/notifications/useNotifications.js';
+import { useGetInboxQuery } from '../services/inboxApi.js';
+import { useGetDevicesQuery } from '../services/devicesApi.js';
 
 const NAV = [
   { to: '/', icon: '📊', label: 'Dashboard', end: true },
   { to: '/transactions', icon: '💸', label: 'Transaksi' },
+  // Only shown once a phone is connected or something waits for review (keeps the mobile tab bar short)
+  { to: '/review', icon: '📲', label: 'Tinjau', optional: true },
   { to: '/search', icon: '🔎', label: 'Cari' },
   { to: '/reports', icon: '📄', label: 'Laporan' },
   { to: '/split', icon: '🧾', label: 'Split Bill' },
@@ -18,12 +22,16 @@ const NAV = [
 ];
 
 // Unread badges per menu item
-const BADGE = { '/chat': 'chat', '/notifications': 'total' };
+const BADGE = { '/chat': 'chat', '/notifications': 'total', '/review': 'review' };
 
 export default function Layout() {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
-  const { counts } = useNotifications();
+  const { counts: notifCounts } = useNotifications();
+  const { data: inbox = [] } = useGetInboxQuery();
+  const { data: devices = [] } = useGetDevicesQuery();
+  const { pathname } = useLocation();
+  const counts = { ...notifCounts, review: inbox.length };
   useNotificationAlerts();
   return (
     <div className="shell">
@@ -33,7 +41,7 @@ export default function Layout() {
           <span>Catatan Keuangan</span>
         </div>
         <nav>
-          {NAV.map((n) => (
+          {NAV.filter((n) => !n.optional || counts.review > 0 || devices.length > 0 || pathname === n.to).map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className="nav-link">
               <span className="nav-icon">{n.icon}</span>
               <span className="nav-label">{n.label}</span>

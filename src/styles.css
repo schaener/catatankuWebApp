@@ -302,8 +302,9 @@ details summary { cursor: pointer; color: var(--primary); font-size: .9rem; }
     flex-direction: row; padding: 6px max(4px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px)); border-right: none; border-top: 1px solid var(--border);
   }
   .brand, .sidebar-user { display: none; }
-  .sidebar nav { flex-direction: row; justify-content: space-around; gap: 0; }
-  .nav-link { flex-direction: column; gap: 2px; padding: 6px 4px; font-size: .68rem; flex: 1; }
+  .sidebar nav { flex-direction: row; justify-content: space-around; gap: 0; overflow-x: auto; scrollbar-width: none; }
+  .sidebar nav::-webkit-scrollbar { display: none; }
+  .nav-link { flex-direction: column; gap: 2px; padding: 6px 4px; font-size: .68rem; flex: 1 0 auto; min-width: 58px; white-space: nowrap; }
   .nav-icon { font-size: 1.15rem; }
   .badge { position: absolute; top: 0; left: 50%; margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; font-size: .6rem; }
   .notif-permission { flex-direction: column; align-items: stretch; }
@@ -325,3 +326,45 @@ details summary { cursor: pointer; color: var(--primary); font-size: .9rem; }
   .card { box-shadow: none; break-inside: avoid; }
   body { background: #fff; color: #000; }
 }
+
+/* Review inbox (notifications captured on the phone) */
+.center { text-align: center; }
+.left { text-align: left; }
+.app-badge { width: 42px; height: 42px; border-radius: 14px; color: #fff; font-weight: 800; font-size: .85rem; display: inline-grid; place-items: center; flex-shrink: 0; box-shadow: 0 6px 14px -8px rgba(0,0,0,.5); }
+.review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.review-card { display: flex; flex-direction: column; gap: 10px; border-left: 4px solid transparent; }
+.review-card.sure { border-left-color: var(--good); }
+.review-head { display: flex; align-items: center; gap: 12px; }
+.review-amount { font-size: 1.15rem; white-space: nowrap; }
+.review-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-warn { background: #fef3c7; color: #b45309; }
+.review-raw { color: var(--muted); font-size: .85rem; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.review-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; }
+.transfer-card { margin-bottom: 14px; background: linear-gradient(135deg, var(--primary-soft), var(--surface)); }
+.transfer-flow { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.transfer-end { display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 600; }
+.transfer-arrow { display: flex; flex-direction: column; align-items: center; color: var(--primary); font-size: 1.1rem; }
+.promo-section { margin-top: 8px; }
+.review-banner { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; color: inherit; background: linear-gradient(120deg, var(--primary), #14b8a6); color: #fff; border: none; }
+.review-banner .btn { background: #fff; color: var(--primary); }
+@media (max-width: 760px) {
+  .review-grid { grid-template-columns: 1fr; }
+  .review-banner { flex-wrap: wrap; }
+}
+
+/* Monitored apps per phone */
+.review-tabs { max-width: 420px; margin-bottom: 18px; }
+.device-card { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+.device-head { display: flex; align-items: center; gap: 12px; }
+.device-icon { width: 46px; height: 46px; border-radius: 14px; background: linear-gradient(135deg, var(--primary), #14b8a6); display: grid; place-items: center; font-size: 1.4rem; }
+.source-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.source-section-head h3 { margin: 0; font-size: 1rem; }
+.source-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.source-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; min-width: 0; }
+.source-row.on { border-color: var(--primary); background: var(--primary-soft); }
+.source-row strong { display: block; }
+.source-more { align-self: flex-start; padding-left: 0; }
+.switch { flex-shrink: 0; width: 44px; height: 26px; border-radius: 999px; border: none; background: var(--border); position: relative; cursor: pointer; transition: background .15s; padding: 0; }
+.switch span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.switch.on { background: var(--primary); }
+.switch.on span { transform: translateX(18px); }

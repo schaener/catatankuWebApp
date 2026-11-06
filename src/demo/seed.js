@@ -234,6 +234,38 @@ export function seedDatabase(store) {
   notif(`like_p4_${rina.uid}`, rina, { type: 'like', postId: 'p4', text: p4.text.slice(0, 80) }, 80, true);
   notif(`like_p4_${sari.uid}`, sari, { type: 'like', postId: 'p4', text: p4.text.slice(0, 80) }, 40);
   notif('comment_c0', sari, { type: 'comment', postId: 'p4', text: p4.comments[0][1] }, 35);
+  // Bank / e-wallet notifications captured by the (simulated) Android companion app
+  [
+    ['demo.bca', 'BCA mobile', 'Transaksi Berhasil', 'Pembayaran QRIS Rp 45.500,00 di KOPI KENANGAN berhasil', 12],
+    ['demo.gojek', 'Gojek', 'GoPay', 'Pembayaran GoPay Rp18.000 untuk GoRide berhasil', 50],
+    ['demo.bca', 'BCA mobile', 'Transaksi Berhasil', 'Top Up GoPay Rp 100.000 berhasil', 95],
+    ['demo.gopay', 'GoPay', 'Top up berhasil', 'Top up Rp100.000 berhasil. Saldo GoPay kamu sekarang Rp 120.000', 94],
+    ['demo.dana', 'DANA', 'Uang masuk', 'Kamu terima Rp50.000 dari ANDI PRATAMA', 180],
+    ['demo.seabank', 'SeaBank', 'Info akun', 'Ada aktivitas Rp 30.000 di akunmu', 240],
+    ['demo.shopee', 'ShopeePay', 'Promo hari ini 🎉', 'Cashback hingga Rp50rb! Yuk belanja pakai ShopeePay hari ini', 300],
+  ].forEach(([packageName, appName, title, text, min], i) =>
+    store.set(`users/${me.uid}/inbox/n${i}`, { packageName, appName, title, text, postedAt: ago(min), device: 'Demo Android' }),
+  );
+  // The (simulated) phone running Catatanku Auto, with the apps it can listen to
+  const phoneApps = [
+    ['demo.bca', 'BCA mobile', true], ['demo.mybca', 'myBCA', true], ['demo.brimo', 'BRImo', true],
+    ['demo.livin', "Livin' by Mandiri", true], ['demo.jago', 'Jago', true], ['demo.seabank', 'SeaBank', true],
+    ['demo.gojek', 'Gojek', true], ['demo.gopay', 'GoPay', true], ['demo.dana', 'DANA', true], ['demo.ovo', 'OVO', true],
+    ['demo.shopee', 'ShopeePay', true], ['demo.grab', 'Grab', true],
+    ['demo.wa', 'WhatsApp', false], ['demo.ig', 'Instagram', false], ['demo.tokped', 'Tokopedia', false],
+    ['demo.yt', 'YouTube', false], ['demo.maps', 'Maps', false], ['demo.gmail', 'Gmail', false],
+  ];
+  store.set(`users/${me.uid}/devices/demo-phone`, {
+    name: 'Samsung Galaxy A55',
+    platform: 'android',
+    osVersion: '15',
+    appVersion: '1.0',
+    lastSeen: ago(3),
+    listenerEnabled: true,
+    batteryUnrestricted: false,
+    installedApps: phoneApps.map(([packageName, label, suggested]) => ({ packageName, label, suggested })),
+    selected: phoneApps.filter(([p, , suggested]) => suggested && !['demo.ovo', 'demo.grab'].includes(p)).map(([p]) => p),
+  });
   notif(`chat_${dm}`, rina, { type: 'message', chatId: dm, chatName: null, text: 'Udah aku transfer ya buat yang sate kemarin 🙏', count: 1 }, 60 * 20);
 }
 

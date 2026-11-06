@@ -15,7 +15,7 @@ import { api, currentUser, listTags, run } from './api.js';
 import { serializeDoc } from '../utils/serialize.js';
 import { endOfDayMs, startOfDayMs } from '../utils/date.js';
 
-const txCol = (uid) => collection(db, 'users', uid, 'transactions');
+export const txCol = (uid) => collection(db, 'users', uid, 'transactions');
 
 export async function fetchTransactions(uid, { from, to } = {}) {
   const constraints = [];
@@ -25,7 +25,7 @@ export async function fetchTransactions(uid, { from, to } = {}) {
   return snap.docs.map(serializeDoc);
 }
 
-function cleanTx(tx) {
+export function cleanTx(tx) {
   return {
     type: tx.type === 'income' ? 'income' : 'expense',
     amount: Math.round(Number(tx.amount) || 0),

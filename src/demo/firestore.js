@@ -2,7 +2,7 @@
 // Only bundled in the demo build (vite --mode demo aliases firebase/firestore here).
 import { seedDatabase, scheduleAutoReply } from './seed.js';
 
-const KEY = 'catatan-keuangan:demo-db:v2'; // bump when seed data changes shape
+const KEY = 'catatan-keuangan:demo-db:v4'; // bump when seed data changes shape
 const store = new Map();
 const listeners = new Set();
 const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));

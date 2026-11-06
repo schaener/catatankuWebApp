@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- rounded tile -->
+    <path android:fillColor="#FFFFFF" android:pathData="M34,30h40a8,8 0,0 1,8 8v32a8,8 0,0 1,-8 8h-40a8,8 0,0 1,-8 -8v-32a8,8 0,0 1,8 -8z"/>
+    <!-- "R" -->
+    <path android:fillColor="#0F766E" android:pathData="M38,40h11c5,0 8,3 8,7.5c0,3.4 -1.8,5.8 -4.8,6.8l5.6,9.7h-6.1l-4.9,-9h-3.6v9h-5.2zM43.2,44.4v6.4h5.4c2.1,0 3.2,-1.2 3.2,-3.2s-1.1,-3.2 -3.2,-3.2z"/>
+    <!-- "p" -->
+    <path android:fillColor="#0F766E" android:pathData="M60,47h4.8v1.8c1.1,-1.4 2.8,-2.2 4.8,-2.2c4.2,0 7,3.3 7,7.9s-2.8,7.9 -7,7.9c-2,0 -3.6,-0.8 -4.7,-2.1v8.7h-4.9zM68.3,50.8c-2.2,0 -3.6,1.6 -3.6,3.7s1.4,3.7 3.6,3.7s3.6,-1.6 3.6,-3.7s-1.4,-3.7 -3.6,-3.7z"/>
+</vector>

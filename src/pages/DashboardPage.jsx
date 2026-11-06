@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import { useGetTransactionsQuery } from '../services/transactionsApi.js';
 import { useGetSplitBillsQuery } from '../services/splitBillsApi.js';
+import { useGetInboxQuery } from '../services/inboxApi.js';
 import { selectUser } from '../features/auth/authSlice.js';
 import { logout } from '../features/auth/authThunks.js';
 import { lastNMonthsRange, monthKey, monthKeysBetween, monthLabel } from '../utils/date.js';
@@ -25,6 +26,21 @@ import { CHART_COLORS } from '../utils/constants.js';
 import { ErrorBox, Modal, PageHeader, Spinner, StatCard } from '../components/ui.jsx';
 import TransactionForm from '../components/TransactionForm.jsx';
 import TransactionList from '../components/TransactionList.jsx';
+
+function ReviewBanner() {
+  const { data = [] } = useGetInboxQuery();
+  if (!data.length) return null;
+  return (
+    <Link to="/review" className="card review-banner">
+      <span style={{ fontSize: '1.8rem' }}>📲</span>
+      <div className="grow">
+        <strong>{data.length} transaksi dari notifikasi HP menunggu</strong>
+        <div className="small">Cek sebentar, lalu simpan dengan sekali klik.</div>
+      </div>
+      <span className="btn">Tinjau</span>
+    </Link>
+  );
+}
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
@@ -55,6 +71,7 @@ export default function DashboardPage() {
 
   return (
     <div className="page">
+      <ReviewBanner />
       <PageHeader title={`Halo, ${user.displayName?.split(' ')[0]} 👋`} subtitle="Ringkasan keuangan bulan ini">
         {isFetching && !isLoading && <span className="muted small">menyinkronkan…</span>}
         <button className="btn btn-primary" onClick={() => setAdding(true)}>

@@ -17,6 +17,7 @@ Live: https://catatanku-fe332.web.app
 | Split bill | `/split` | Equal, per‑item, or custom split with tax & service; registered users or guests; mark paid (optimistic); copy summary for WhatsApp; open group chat; optionally log your share as an expense |
 | Chat | `/chat` | Real-time direct & group chats between users; unread badge in the sidebar |
 | Social feed | `/feed` | Post stories/tips with mood, amount, category, image URL; likes (optimistic), real-time comments, load more |
+| Auto-capture review | `/review` | Bank & e-wallet notifications captured by the Android companion app (`android/`) are parsed into drafts (`src/utils/notifParser.js`): amount, income/expense, merchant, category guess, promo detection. Save one / all confident ones, edit in the transaction form, ignore, or confirm a detected **transfer between own accounts** (same amount out of one app and into another within 10 min) so it isn't counted twice. A second tab, **Aplikasi dipantau**, lists every connected phone (status: notification access, battery, last seen) with an on/off switch per installed app, synced live with the phone. Menu item appears once a phone is connected or items are waiting |
 | Notifications | `/notifications` | Real-time alerts for likes and comments on your posts and new chat messages (grouped per chat with a count); unread badges, toast while the app is open, browser notification when the tab is hidden, mark read / mark all read. The chat you have open is marked read automatically |
 
 ## Caching system (3 layers)
@@ -54,6 +55,10 @@ firestore.rules   security rules
 users/{uid}                       public profile (directory for chat/split bill)
 users/{uid}/transactions/{id}     type, amount, category, place, paymentMethod, note, date(ms)
 users/{uid}/reports/{id}          title, from, to, notes, summary, transactions[]
+users/{uid}/inbox/{id}            captured phone notification: packageName, appName, title, text, postedAt, device
+                                  (deleted once reviewed; parsed client-side, not stored)
+users/{uid}/devices/{deviceId}    phone running the Android app: name, osVersion, appVersion, lastSeen, listenerEnabled,
+                                  batteryUnrestricted, installedApps[{packageName,label,suggested}], selected[packageName]
 users/{uid}/notifications/{id}    type (like|comment|message), actorId, actorName, text, postId|chatId,
                                   count (messages), read, updatedAt
 splitBills/{id}                   ownerId, memberUids[], participants[], items[], total...
@@ -111,6 +116,42 @@ Requires **Node ≥ 20.19 or ≥ 22.12** (Vite 8). Node 21 fails with
    npm run build
    firebase deploy --only firestore:rules,firestore:indexes,hosting
    ```
+
+## Android companion app (`android/`)
+
+**Catatanku Auto** (Kotlin + Jetpack Compose) captures bank / e-wallet notifications on the phone and uploads them
+to `users/{uid}/inbox` of the same Firebase account (Google sign-in via Credential Manager).
+
+- `NotificationCaptureService` (NotificationListenerService) handles only apps the user selected (finance apps are
+  pre-selected by name), drops anything without an `Rp`/`IDR` amount and anything that looks like an OTP / PIN.
+  Parsing happens on the web, so improving it needs no reinstall.
+- Survives reboots: the system re-binds the listener once *Notification access* is granted; `BootReceiver`
+  additionally requests a rebind and flushes the queue after `BOOT_COMPLETED` / app update. The home screen walks
+  the user through notification access, battery optimisation and the vendor autostart screen (Xiaomi, Oppo/realme,
+  vivo, Huawei, ...).
+- Which apps are captured can be switched on/off on the phone (*Sumber* tab) or on the web (*Tinjau → Aplikasi
+  dipantau*). `DeviceSync` mirrors the phone to `users/{uid}/devices/{deviceId}` and listens for changes; the
+  listener reads a local copy, so the selection also applies offline and right after a reboot. Bank / e-wallet apps
+  installed later are switched on automatically once.
+- Offline-safe: captures are journaled locally (`files/captured.json`) and uploaded with deterministic ids when
+  online/signed in.
+- Android 15+ hides notification content the system classifies as a one-time code ("Sensitive notification content
+  hidden"); such notifications can't be read by any third-party listener.
+
+Build (JDK 17, Android SDK 35):
+
+```bash
+cd android
+./gradlew testDebugUnitTest assembleRelease      # -> app/build/outputs/apk/release/app-release.apk
+```
+
+The release build is signed with the local debug keystore whose SHA-1 is registered on the Firebase Android app
+(`com.catatanku.auto`); building on another machine requires adding that machine's SHA-1
+(`./gradlew signingReport`) in Firebase and re-downloading `app/google-services.json`.
+
+Testing on an emulator without a Google account: `./gradlew assembleDebug -Pemulators=true` builds a variant that
+uses the local Auth/Firestore emulators (`firebase emulators:start --only auth,firestore`) and offers a fake sign-in;
+debug builds also capture `adb shell cmd notification post ...` notifications.
 
 ## Demo mode
 

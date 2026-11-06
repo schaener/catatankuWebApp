@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Catatanku Auto</string>
+    <string name="listener_label">Catatanku Auto: catat transaksi dari notifikasi</string>
+</resources>
