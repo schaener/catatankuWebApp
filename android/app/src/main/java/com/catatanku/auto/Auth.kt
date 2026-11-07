@@ -6,6 +6,7 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
@@ -20,24 +21,36 @@ import kotlinx.coroutines.tasks.await
 object Auth {
     val auth: FirebaseAuth get() = FirebaseAuth.getInstance()
 
-    suspend fun signInWithGoogle(activity: Activity) {
-        val option = GetSignInWithGoogleOption.Builder(activity.getString(R.string.default_web_client_id)).build()
-        val result = CredentialManager.create(activity)
-            .getCredential(activity, GetCredentialRequest.Builder().addCredentialOption(option).build())
-        val credential = result.credential
+    val hasSession: Boolean get() = auth.currentUser != null
+
+    /**
+     * Native Google sign-in for the web app inside the WebView (Google blocks OAuth there).
+     * Signs the native SDK in (so captures upload to the same account) and returns the Google ID token,
+     * which Firebase Web accepts via signInWithCredential. `silent` = reuse an authorized account, no UI.
+     */
+    suspend fun signInForWeb(activity: Activity, silent: Boolean): String {
+        val idToken = if (BuildConfig.USE_EMULATORS) FAKE_TOKEN else googleIdToken(activity, silent)
+        finish(activity, auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await().user!!)
+        return idToken
+    }
+
+    private suspend fun googleIdToken(activity: Activity, silent: Boolean): String {
+        val clientId = activity.getString(R.string.default_web_client_id)
+        val option = if (silent) {
+            GetGoogleIdOption.Builder().setServerClientId(clientId).setFilterByAuthorizedAccounts(true).setAutoSelectEnabled(true).build()
+        } else {
+            GetSignInWithGoogleOption.Builder(clientId).build()
+        }
+        val credential = CredentialManager.create(activity)
+            .getCredential(activity, GetCredentialRequest.Builder().addCredentialOption(option).build()).credential
         require(credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             "Kredensial Google tidak dikenali"
         }
-        val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
-        finish(activity, auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await().user!!)
+        return GoogleIdTokenCredential.createFrom(credential.data).idToken
     }
 
-    /** Emulator builds only: the Auth emulator accepts an unsigned JSON "id token". */
-    suspend fun signInFake(context: Context) {
-        check(BuildConfig.USE_EMULATORS)
-        val token = """{"sub":"tester-1","email":"tester@catatanku.test","email_verified":true,"name":"Penguji Emulator"}"""
-        finish(context, auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await().user!!)
-    }
+    /** Emulator builds only: the Auth emulator accepts an unsigned JSON "id token" (web and native alike). */
+    private const val FAKE_TOKEN = """{"sub":"tester-1","email":"tester@catatanku.test","email_verified":true,"name":"Penguji Emulator"}"""
 
     // Keep the public profile in sync like the web app does, then upload anything captured while signed out.
     private suspend fun finish(context: Context, user: FirebaseUser) {

@@ -56,11 +56,22 @@ export const serverTimestamp = () => ({ __op: 'ts' });
 export const increment = (n) => ({ __op: 'inc', n });
 export const arrayUnion = (...v) => ({ __op: 'union', v });
 export const arrayRemove = (...v) => ({ __op: 'remove', v });
+export const deleteField = () => ({ __op: 'delete' });
+export const Timestamp = { fromMillis: (ms) => ({ toMillis: () => ms }), now: () => ({ toMillis: () => Date.now() }) };
+export const connectFirestoreEmulator = () => {};
 
 function resolve(prev = {}, data) {
   const out = { ...prev };
-  for (const [k, v] of Object.entries(data)) {
-    if (v && typeof v === 'object' && v.__op) {
+  for (const [key, v] of Object.entries(data)) {
+    // dotted field paths ("members.uid") update nested maps
+    if (key.includes('.')) {
+      const [head, ...rest] = key.split('.');
+      out[head] = resolve(prev[head] || {}, { [rest.join('.')]: v });
+      continue;
+    }
+    const k = key;
+    if (v && typeof v === 'object' && v.__op === 'delete') delete out[k];
+    else if (v && typeof v === 'object' && v.__op) {
       if (v.__op === 'ts') out[k] = Date.now();
       else if (v.__op === 'inc') out[k] = (Number(prev[k]) || 0) + v.n;
       else if (v.__op === 'union') out[k] = [...new Set([...(prev[k] || []), ...v.v])];
@@ -73,6 +84,7 @@ function resolve(prev = {}, data) {
 // ---- snapshots
 const docSnap = (path, data) => ({
   id: path.split('/').pop(),
+  ref: { type: 'doc', path, id: path.split('/').pop() },
   exists: () => data !== undefined,
   data: () => clone(data),
 });

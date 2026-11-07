@@ -24,7 +24,13 @@ function set(user) {
 export const getAuth = () => ({ demo: true });
 export class GoogleAuthProvider {
   setCustomParameters() {}
+  static credential(idToken) {
+    return { idToken };
+  }
 }
+
+export const connectAuthEmulator = () => {};
+export const signInWithCredential = (...args) => signInWithPopup(...args);
 export function onAuthStateChanged(_auth, cb) {
   subs.add(cb);
   setTimeout(() => subs.has(cb) && cb(current), 0);

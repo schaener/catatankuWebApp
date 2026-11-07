@@ -1,6 +1,6 @@
 // Sample data for the demo build. Everything here is fictional.
-import { summarize } from '../utils/finance.js';
-import { monthKeysBetween, monthRange, toDateStr } from '../utils/date.js';
+import { summarize } from '../modules/ledger/logic/finance.js';
+import { monthKeysBetween, monthRange, toDateStr } from '../platform/date.js';
 
 export const DEMO_USER = {
   uid: 'demo-user',

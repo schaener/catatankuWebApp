@@ -1,13 +1,15 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
 }
 
-// `./gradlew assembleDebug -Pemulators=true` builds a variant that talks to the local
-// Firebase Auth/Firestore emulators (10.0.2.2) and offers a fake sign-in, for testing on an AVD.
+// `./gradlew assembleDebug -Pemulators=true` builds a variant that talks to the local Firebase
+// Auth/Firestore emulators and loads the web app from the Vite dev server (10.0.2.2 = the host Mac),
+// with a fake Google sign-in, for testing on an AVD. `-PwebUrl=...` overrides the web app URL.
 val useEmulators = (project.findProperty("emulators") as String?) == "true"
+val webUrl = (project.findProperty("webUrl") as String?)
+    ?: if (useEmulators) "http://10.0.2.2:5173" else "https://catatanku-fe332.web.app"
 
 android {
     namespace = "com.catatanku.auto"
@@ -17,17 +19,20 @@ android {
         applicationId = "com.catatanku.auto"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "3.1"
         buildConfigField("boolean", "USE_EMULATORS", useEmulators.toString())
-        buildConfigField("String", "WEB_URL", "\"https://catatanku-fe332.web.app\"")
+        buildConfigField("String", "WEB_URL", "\"$webUrl\"")
         // the local emulators speak plain HTTP
         manifestPlaceholders["cleartext"] = useEmulators.toString()
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: smaller APK and faster startup, which matters most on low-end phones.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -37,22 +42,16 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures {
-        compose = true
         buildConfig = true
     }
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2025.05.01")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-core")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
+    // No Compose: the UI is the web app in a WebView, which keeps the APK small and cold start fast on old phones.
+    implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
+    implementation("androidx.webkit:webkit:1.13.0")
 
     implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
     implementation("com.google.firebase:firebase-auth")

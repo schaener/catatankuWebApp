@@ -1,6 +1,7 @@
 package com.catatanku.auto
 
 import android.annotation.SuppressLint
+import android.app.AppOpsManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ComponentName
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
+import android.os.Process
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -27,6 +29,28 @@ object SystemSetup {
         }
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
+
+    /**
+     * Android 15+ hides notifications it thinks contain a one-time code from third-party listeners, and its
+     * detector also fires on bank reference numbers ("No. Ref: 88123456"), hiding ordinary transfers.
+     * The RECEIVE_SENSITIVE_NOTIFICATIONS app-op lifts that; it can only be granted over ADB
+     * ([SENSITIVE_ADB_COMMAND]). Our own filter still drops real OTPs, so codes never leave the phone.
+     */
+    fun needsSensitiveAccess(): Boolean = Build.VERSION.SDK_INT >= 35
+
+    fun hasSensitiveAccess(context: Context): Boolean {
+        if (!needsSensitiveAccess()) return true
+        val ops = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        return runCatching {
+            ops.unsafeCheckOpNoThrow("android:receive_sensitive_notifications", Process.myUid(), context.packageName) == AppOpsManager.MODE_ALLOWED
+        }.getOrDefault(false)
+    }
+
+    /** Grant + rebind the listener so the change applies immediately. */
+    const val SENSITIVE_ADB_COMMAND =
+        "adb shell cmd appops set com.catatanku.auto RECEIVE_SENSITIVE_NOTIFICATIONS allow && " +
+            "adb shell cmd notification disallow_listener com.catatanku.auto/.NotificationCaptureService && " +
+            "adb shell cmd notification allow_listener com.catatanku.auto/.NotificationCaptureService"
 
     fun isIgnoringBattery(context: Context): Boolean =
         (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)

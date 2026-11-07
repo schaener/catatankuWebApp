@@ -49,6 +49,76 @@ service cloud.firestore {
       }
     }
 
+    // ---- Squads: groups that see each other's *shared* transactions.
+    // Membership changes are tightly scoped: the owner manages the squad; anyone may add exactly
+    // themselves with a valid, unexpired invite; a member may remove exactly themselves.
+    function squad(id) {
+      return get(/databases/$(database)/documents/squads/$(id)).data;
+    }
+    function isSquadMember(id) {
+      return signedIn() && request.auth.uid in squad(id).memberUids;
+    }
+
+    match /squads/{squadId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberUids;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberUids == [request.auth.uid]
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40;
+      allow update: if signedIn() && (ownerEdit() || joining() || leaving());
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      function onlyOwnMemberEntry() {
+        return request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]);
+      }
+      function ownerEdit() {
+        return resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == resource.data.ownerId
+          && request.auth.uid in request.resource.data.memberUids;
+      }
+      function joining() {
+        let before = resource.data.memberUids;
+        let after = request.resource.data.memberUids;
+        let invite = get(/databases/$(database)/documents/squadInvites/$(request.resource.data.joinCode)).data;
+        return !(request.auth.uid in before)
+          && after.size() == before.size() + 1
+          && after.toSet() == before.toSet().union([request.auth.uid].toSet())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'members', 'joinCode'])
+          && onlyOwnMemberEntry()
+          && invite.squadId == squadId && invite.expiresAt > request.time;
+      }
+      function leaving() {
+        return request.auth.uid in resource.data.memberUids
+          && request.auth.uid != resource.data.ownerId
+          && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'members'])
+          && onlyOwnMemberEntry();
+      }
+
+      // Read model of shared transactions, written by each transaction's owner in the same batch as
+      // the transaction itself. Members read; only the owner writes; the squad owner may clean up.
+      match /entries/{entryId} {
+        allow read: if isSquadMember(squadId);
+        allow create, update: if isSquadMember(squadId)
+          && request.resource.data.ownerUid == request.auth.uid
+          && (resource == null || resource.data.ownerUid == request.auth.uid)
+          && request.resource.data.txId == entryId
+          && request.resource.data.amount is number;
+        allow delete: if signedIn() && (resource == null
+          || resource.data.ownerUid == request.auth.uid
+          || squad(squadId).ownerId == request.auth.uid);
+      }
+    }
+
+    // Invite codes: unguessable ids, readable by code only (no listing), managed by the squad owner.
+    match /squadInvites/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+        && getAfter(/databases/$(database)/documents/squads/$(request.resource.data.squadId)).data.ownerId == request.auth.uid;
+      allow delete: if signedIn() && (resource == null || squad(resource.data.squadId).ownerId == request.auth.uid);
+    }
+
     // ---- Split bills: visible to every linked member, managed by owner.
     match /splitBills/{billId} {
       allow read: if signedIn() && request.auth.uid in resource.data.memberUids;

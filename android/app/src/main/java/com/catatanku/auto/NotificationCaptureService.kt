@@ -16,6 +16,8 @@ class NotificationCaptureService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         Log.i(TAG, "listener connected")
+        // Anything posted while we were unbound (process killed, reboot, update) is still in the shade.
+        runCatching { activeNotifications?.forEach(::handle) }.onFailure { Log.w(TAG, "active scan failed", it) }
         CaptureStore.flush(this)
     }
 
@@ -24,31 +26,37 @@ class NotificationCaptureService : NotificationListenerService() {
         requestRebind(component(this))
     }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val n = sbn.notification ?: return
-        if (BuildConfig.DEBUG) Log.d(TAG, "posted ${sbn.packageName} key=${sbn.key} flags=${n.flags}")
-        if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
-        if (!Sources.isCaptured(this, sbn.packageName)) return
+    override fun onNotificationPosted(sbn: StatusBarNotification) = handle(sbn)
 
-        val extras = n.extras
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty().trim()
-        val text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))
-            ?.toString().orEmpty().trim()
-        if (!CaptureFilter.isCandidate(title, text)) {
-            if (BuildConfig.DEBUG) Log.d(TAG, "skipped (no amount or secret): $title | $text")
+    private fun handle(sbn: StatusBarNotification) {
+        val n = sbn.notification ?: return
+        if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+        val pkg = sbn.packageName
+        val (title, text) = NotificationText.extract(n)
+        if (title.isEmpty() && text.isEmpty()) return
+        val id = CaptureFilter.idFor(pkg, sbn.key, title, text)
+
+        if (!Sources.isCaptured(this, pkg)) {
+            // Only remember unmonitored apps that look like a bank / e-wallet and mention money; never chats etc.
+            if (CaptureFilter.hasAmount("$title $text") && Sources.isFinance(Sources.label(this, pkg), pkg)) {
+                skip(id, sbn, title, text, SkipReason.NOT_MONITORED)
+            }
             return
         }
+        when (val d = CaptureFilter.decide(title, text)) {
+            is Decision.Capture -> {
+                val item = CapturedItem(id, pkg, Sources.label(this, pkg), d.title, d.text, sbn.postTime)
+                if (CaptureStore.add(this, item)) Log.i(TAG, "captured ${item.appName}: ${item.amount}")
+            }
+            is Decision.Skip ->
+                if (d.reason != SkipReason.NO_AMOUNT || CaptureFilter.looksLikeTransaction("$title $text")) skip(id, sbn, title, text, d.reason)
+        }
+    }
 
-        val item = CapturedItem(
-            id = CaptureFilter.idFor(sbn.packageName, sbn.key, title, text),
-            packageName = sbn.packageName,
-            appName = Sources.label(this, sbn.packageName),
-            title = title,
-            text = text,
-            postedAt = sbn.postTime,
-        )
-        if (CaptureStore.add(this, item)) Log.i(TAG, "captured ${item.appName}: ${item.amount}")
-        else if (BuildConfig.DEBUG) Log.d(TAG, "duplicate ${item.id}")
+    private fun skip(id: String, sbn: StatusBarNotification, title: String, text: String, reason: SkipReason) {
+        if (BuildConfig.DEBUG) Log.d(TAG, "skipped ${sbn.packageName} ($reason)")
+        val secret = reason == SkipReason.SECRET
+        SkipLog.add(this, SkippedItem(id, sbn.packageName, Sources.label(this, sbn.packageName), if (secret) "" else title, if (secret) "" else text, reason, sbn.postTime))
     }
 
     companion object {

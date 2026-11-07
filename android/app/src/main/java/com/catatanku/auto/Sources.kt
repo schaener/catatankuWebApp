@@ -2,12 +2,12 @@ package com.catatanku.auto
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-data class SourceApp(val packageName: String, val label: String, val icon: Drawable?, val suggested: Boolean)
+/** Icons are not loaded here (expensive for 100+ apps); the UI fetches them lazily via AppIcons. */
+data class SourceApp(val packageName: String, val label: String, val suggested: Boolean)
 
 /**
  * Which apps' notifications are captured. The local copy (SharedPreferences) is what the listener
@@ -53,6 +53,15 @@ object Sources {
         DeviceSync.setSelected(packageName, on)
     }
 
+    /** Switch several apps at once (web "Nyalakan semua" / single switch inside the app). */
+    fun setMany(context: Context, packages: Collection<String>, on: Boolean) {
+        val current = load(context)
+        val next = if (on) current + packages else current - packages.toSet()
+        if (next == current) return
+        save(context, next)
+        packages.forEach { DeviceSync.setSelected(it, on) }
+    }
+
     /** Selection changed elsewhere (web). */
     fun applyRemote(context: Context, remote: Set<String>) {
         if (remote != load(context)) save(context, remote)
@@ -96,10 +105,10 @@ object Sources {
             .filter { it.packageName != context.packageName }
             .map {
                 val label = pm.getApplicationLabel(it).toString()
-                SourceApp(it.packageName, label, runCatching { pm.getApplicationIcon(it) }.getOrNull(), isFinance(label, it.packageName))
+                SourceApp(it.packageName, label, isFinance(label, it.packageName))
             }
         // Debug builds expose `adb shell cmd notification post` as a selectable source for testing.
-        val debug = if (BuildConfig.DEBUG) listOf(SourceApp(SHELL, "Shell (adb uji)", null, true)) else emptyList()
+        val debug = if (BuildConfig.DEBUG) listOf(SourceApp(SHELL, "Shell (adb uji)", true)) else emptyList()
         return (debug + apps).sortedWith(compareByDescending<SourceApp> { it.suggested }.thenBy { it.label.lowercase() })
     }
 }

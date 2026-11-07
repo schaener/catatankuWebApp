@@ -284,7 +284,7 @@ details summary { cursor: pointer; color: var(--primary); font-size: .9rem; }
 .modal-body { padding: 20px; overflow: auto; }
 
 /* Login */
-.login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login { min-height: 100vh; display: grid; place-items: center; padding: calc(16px + var(--safe-top, 0px)) 16px calc(16px + var(--safe-bottom, 0px)); background: linear-gradient(120deg, #0f766e, #0d9488, #14b8a6); }
 .demo-note { margin: 0; font-size: .85rem; color: var(--muted); background: var(--surface-2); border: 1px dashed var(--border); border-radius: 10px; padding: 10px 12px; }
 .login-card { max-width: 420px; text-align: center; padding: 36px 28px; display: flex; flex-direction: column; gap: 14px; }
 
@@ -299,7 +299,7 @@ details summary { cursor: pointer; color: var(--primary); font-size: .9rem; }
   .shell { grid-template-columns: 1fr; }
   .sidebar {
     position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: auto; z-index: 40;
-    flex-direction: row; padding: 6px max(4px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px)); border-right: none; border-top: 1px solid var(--border);
+    flex-direction: row; padding: 6px max(4px, env(safe-area-inset-right, 0px)) calc(6px + var(--safe-bottom)) max(4px, env(safe-area-inset-left, 0px)); border-right: none; border-top: 1px solid var(--border);
   }
   .brand, .sidebar-user { display: none; }
   .sidebar nav { flex-direction: row; justify-content: space-around; gap: 0; overflow-x: auto; scrollbar-width: none; }
@@ -308,7 +308,7 @@ details summary { cursor: pointer; color: var(--primary); font-size: .9rem; }
   .nav-icon { font-size: 1.15rem; }
   .badge { position: absolute; top: 0; left: 50%; margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; font-size: .6rem; }
   .notif-permission { flex-direction: column; align-items: stretch; }
-  .content { padding-block: 16px calc(90px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .content { padding-block: calc(16px + var(--safe-top)) calc(90px + var(--safe-bottom)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .stats-grid.three { grid-template-columns: 1fr; }
   .grid-2, .date-inputs { grid-template-columns: 1fr; }
   .tx-actions { flex-direction: column; }
@@ -354,16 +354,6 @@ details summary { cursor: pointer; color: var(--primary); font-size: .9rem; }
 
 /* Monitored apps per phone */
 .review-tabs { max-width: 420px; margin-bottom: 18px; }
-.device-card { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
-.device-head { display: flex; align-items: center; gap: 12px; }
-.device-icon { width: 46px; height: 46px; border-radius: 14px; background: linear-gradient(135deg, var(--primary), #14b8a6); display: grid; place-items: center; font-size: 1.4rem; }
-.source-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.source-section-head h3 { margin: 0; font-size: 1rem; }
-.source-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
-.source-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; min-width: 0; }
-.source-row.on { border-color: var(--primary); background: var(--primary-soft); }
-.source-row strong { display: block; }
-.source-more { align-self: flex-start; padding-left: 0; }
 .switch { flex-shrink: 0; width: 44px; height: 26px; border-radius: 999px; border: none; background: var(--border); position: relative; cursor: pointer; transition: background .15s; padding: 0; }
 .switch span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
 .switch.on { background: var(--primary); }

@@ -37,25 +37,78 @@ data class CapturedItem(
     }
 }
 
+/** Why a notification from a bank / e-wallet was not captured; shown in Tinjau → Riwayat. */
+enum class SkipReason(val label: String, val hint: String) {
+    NOT_MONITORED("Aplikasi belum dipantau", "Nyalakan aplikasi ini di tab Sumber"),
+    NO_AMOUNT("Nominal tidak terbaca", "Tidak ada \"Rp\" / \"IDR\" / \"Nominal\" di teksnya"),
+    SECRET("Berisi kode rahasia", "OTP / PIN tidak pernah dikirim, isinya tidak disimpan"),
+    HIDDEN("Disembunyikan Android", "Aktifkan \"Notifikasi sensitif\" di tab Akun, lalu tekan Catat untuk yang ini"),
+}
+
+sealed interface Decision {
+    /** Upload [title] / [text]: safety warnings already stripped. */
+    data class Capture(val title: String, val text: String) : Decision
+    data class Skip(val reason: SkipReason) : Decision
+}
+
 /**
- * Cheap on-device filter. Real parsing happens on the web (src/utils/notifParser.js) so it can be
- * improved without reinstalling the app; here we only decide what is allowed to leave the phone.
+ * On-device gate: decides what may leave the phone. Parsing happens later (app + web).
+ *
+ * Banks append warnings like "Jangan berikan PIN/OTP kepada siapapun" to ordinary transfer notifications.
+ * Dropping every notification that mentions "OTP" lost real transactions, so we now:
+ *  1. drop only notifications that actually carry a one-time code (keyword next to a 4-8 digit number),
+ *  2. strip warning sentences (PIN / OTP / password / "jangan berikan ...") before upload,
+ *  3. require an amount in what remains.
  */
 object CaptureFilter {
-    private val AMOUNT = Regex("""(?i)(?:rp\.?|idr)\s?(\d[\d.,]*)""")
-    // Never upload one-time codes or security messages, even if they mention an amount.
-    private val SECRET = Regex(
-        """(?i)\botp\b|kode\s+(?:verifikasi|otp|rahasia|keamanan|aktivasi|unik)|jangan\s+(?:berikan|bagikan|sebarkan|beritahu)|one[- ]time|\bm-?pin\b|password|kata sandi""",
+    private val AMOUNT = Regex(
+        """(?i)(?:rp\.?|idr)\s?(\d[\d.,]*)|(?:nominal|sebesar|senilai|jumlah|total|amount)\s*:?\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?)""",
     )
+    // PLN "token" numbers and transaction reference numbers are not secrets, so they're not code words.
+    private const val CODE_WORD = """(?:\botp\b|kode\s+(?:verifikasi|otp|rahasia|keamanan|aktivasi|unik|akses)|one[- ]time|verification code|\bpin\b)"""
+    // Same sentence only: a '.' is allowed solely as a thousands separator ("Rp 500.000").
+    private const val SAME_SENTENCE = """(?:[^.!?\n]|\.(?=\d)){0,60}?"""
+    private const val CODE = """\b\d{4,8}\b(?![.,\-]?\d)"""
+    // "Kode OTP 123456", "Kode verifikasi kamu 4821", "OTP untuk transfer Rp 500.000: 123456", "482913 adalah kode OTP"
+    private val ONE_TIME_CODE = Regex(
+        """(?i)$CODE_WORD\s*$CODE|$CODE_WORD$SAME_SENTENCE(?:adalah|:|is|=|anda|kamu)\s*$CODE|$CODE\s*(?:adalah|is|merupakan)\s*(?:kode|otp|code)""",
+    )
+    private val WARNING = Regex(
+        """(?i)\botp\b|\bm-?pin\b|\bpin\b|password|kata sandi|jangan\s+(?:berikan|bagikan|sebarkan|beritahu\w*)|one[- ]time|kode\s+(?:verifikasi|rahasia|keamanan|aktivasi)""",
+    )
+    private val SENTENCE_END = Regex("""(?<=[.!?\n])\s+""")
+    private val HIDDEN_BY_SYSTEM = Regex("""(?i)sensitive notification content hidden|konten notifikasi sensitif|isi notifikasi sensitif""")
 
-    fun isCandidate(title: String, text: String): Boolean {
+    private val TRANSACTION_WORDS = Regex("""(?i)transfer|transaksi|pembayaran|\bbayar|debit|kredit|dana masuk|terima|top ?-?up|tarik tunai|penarikan|qris|terkirim|mutasi""")
+
+    fun hasAmount(s: String) = AMOUNT.containsMatchIn(s)
+
+    /** Worth listing as "not recorded" even without an amount (keeps marketing pushes out of that list). */
+    fun looksLikeTransaction(s: String) = TRANSACTION_WORDS.containsMatchIn(s)
+
+    fun decide(title: String, text: String): Decision {
         val all = "$title $text"
-        return AMOUNT.containsMatchIn(all) && !SECRET.containsMatchIn(all)
+        if (HIDDEN_BY_SYSTEM.containsMatchIn(all)) return Decision.Skip(SkipReason.HIDDEN)
+        if (ONE_TIME_CODE.containsMatchIn(all)) return Decision.Skip(SkipReason.SECRET)
+        val cleanTitle = stripWarnings(title)
+        val cleanText = stripWarnings(text)
+        return when {
+            hasAmount("$cleanTitle $cleanText") -> Decision.Capture(cleanTitle, cleanText)
+            // the amount only appeared inside a security sentence ("Masukkan m-PIN untuk transfer Rp ...")
+            hasAmount(all) -> Decision.Skip(SkipReason.SECRET)
+            else -> Decision.Skip(SkipReason.NO_AMOUNT)
+        }
     }
+
+    /** Drops sentences that mention PIN / OTP / passwords; the rest of the notification is kept verbatim. */
+    fun stripWarnings(s: String): String =
+        if (!WARNING.containsMatchIn(s)) s.trim()
+        else s.split(SENTENCE_END).filterNot { WARNING.containsMatchIn(it) }.joinToString(" ").trim()
 
     /** Rough amount for display on the phone ("Rp 1.250.000,00" -> 1250000). */
     fun findAmount(s: String): Long? {
-        val raw = AMOUNT.find(s)?.groupValues?.get(1) ?: return null
+        val m = AMOUNT.find(s) ?: return null
+        val raw = m.groupValues[1].ifEmpty { m.groupValues[2] }
         val digits = raw.replace(Regex("""[.,]\d{1,2}$"""), "").replace(Regex("""[.,]"""), "")
         return digits.toLongOrNull()?.takeIf { it > 0 }
     }

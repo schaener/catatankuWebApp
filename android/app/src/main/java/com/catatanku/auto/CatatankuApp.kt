@@ -13,6 +13,7 @@ class CatatankuApp : Application() {
             FirebaseFirestore.getInstance().useEmulator("10.0.2.2", 8080)
         }
         CaptureStore.init(this)
+        SkipLog.init(this)
         Sources.load(this)
         DeviceSync.init(this)
     }

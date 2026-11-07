@@ -23,10 +23,11 @@ export default defineConfig(({ mode }) => ({
     chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: mode === 'demo' ? { codeSplitting: false } : {
+        // Long-lived vendor chunks for caching; everything else (incl. recharts, used by one lazy
+        // page) is split automatically along dynamic imports so it never blocks the first paint.
         manualChunks(id) {
           if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) return 'firebase';
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) return 'charts';
-          if (id.includes('node_modules')) return 'vendor';
+          if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|react-redux|@reduxjs|redux|immer|reselect)\//.test(id)) return 'vendor';
         },
       },
     },

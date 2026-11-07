@@ -1,9 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
-import authReducer from '../features/auth/authSlice.js';
-import uiReducer from '../features/ui/uiSlice.js';
-import { api } from '../services/api.js';
-import { setupCachePersistence } from './cachePersistence.js';
+import authReducer from '../platform/auth/authSlice.js';
+import uiReducer from '../platform/ui/uiSlice.js';
+import { api } from '../platform/api.js';
+import { setupCachePersistence } from '../platform/cachePersistence.js';
 
 export const store = configureStore({
   reducer: {
